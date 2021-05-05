@@ -23,11 +23,14 @@ class QLearningTraining(object):
         self.q_matrix = QMatrix()
 
         # Initialize rows in Q-matrix
-        for i in range(64):
-            self.q_matrix.q_matrix.append(QMatrixRow()) # Test this again
+        '''for i in range(64):
+            self.q_matrix.q_matrix.append(QMatrixRow()) # Test this again'''
 
         # For ease of use in training, we'll store the Q-matrix in a numpy array
         self.q_matrix_arr = np.zeros((64,9))
+
+        # Keep track of the 5 most recently updated Q-values
+        self.q_history = []
         
         # Keeps track of current (starting) state, initialized to 0th state
         self.current_state = 0
@@ -43,27 +46,26 @@ class QLearningTraining(object):
 
         # Move the robot according to the current action
         self.phantom_robot_move_DB(action) # update_q_matrix() will be called as callback
-
-        # Keep track of the 5 most recently updated Q-values
-        self.q_history = []
         
 
-    # Selects a random valid (non -1) action from the current state
+    # Selects a random valid action from the current state
     def get_random_action(self, state):
         # Stores all valid actions at the current state
         valid_actions = []
 
         # Search the actions at the current state for the valid ones
         for (s,a) in enumerate(self.q_learning.action_matrix[state]):
-            if a != -1.0: # If valid, append to valid_actions
-                valid_actions.append((s,a))
+            if int(a) != -1: # If valid, append to valid_actions
+                valid_actions.append((s, int(a)))
 
         # Select a random action among the valid actions
-        indx = random.randint(0,len(valid_actions) - 1)
-        new_state, action = valid_actions[indx]
-        
-        # Return that action and next state
-        return new_state, action
+        if len(valid_actions) > 0:
+            (new_state, action) = random.choice(valid_actions)
+            return (new_state, action)
+        else: # Otherwise, reset to the initial state
+            self.new_state = 0
+            # TODO: update internal state to match reset world
+            return None
 
 
     # TESTING: "Moves" the phantom robot to move dumbbells to blocks
@@ -82,7 +84,7 @@ class QLearningTraining(object):
         self.phantom_bot.publish(self.test_movement)
 
     def update_q_matrix(self, data):
-        # Receive r_t (this is just data.reward)
+        # data.reward receives the reward
 
         # Discount factor = 0.8
         gamma = 0.8
@@ -90,11 +92,15 @@ class QLearningTraining(object):
         # Update Q(s,a)
         Q_s_a = data.reward + gamma * max(self.q_matrix_arr[self.new_state])
         
+        # Append the change in Q-value to q_history to see whether Q-value changes are plateauing
         self.q_history.append(Q_s_a - self.q_matrix_arr[self.current_state,self.current_action])
-        if len(self.q_history) > 5:
+        if len(self.q_history) > 5: # q_history only stores the 5 most recent values
             self.q_history.pop(0)
         
+        # Update the Q-matrix in the correct spot with the new Q-value
         self.q_matrix_arr[self.current_state,self.current_action] = Q_s_a
+        
+        # We need to convert the numpy Q-matrix used for testing back into a QMatrix() message type
         self.convert_send_qmatrix_msg()
 
         # If not converged:
@@ -118,7 +124,7 @@ class QLearningTraining(object):
         # TODO: maybe pointer issues?? prob not
         for i in range(len(self.q_matrix_arr)):
             row = list(self.q_matrix_arr[i])
-            self.q_matrix.q_matrix[i] = row
+            self.q_matrix.q_matrix.append(row)
 
         # Publish Q-matrix message to Q-matrix topic
         self.q_matrix_pub.publish(self.q_matrix)
