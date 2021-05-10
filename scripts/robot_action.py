@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rospy
 import numpy as np
 import cv2
@@ -6,9 +8,9 @@ from q_learning_project.msg import RobotMoveDBToBlock
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-import keras_ocr
+# import keras_ocr
 
-pipeline = keras_ocr.pipeline.Pipeline()
+# pipeline = keras_ocr.pipeline.Pipeline()
 
 
 class RobotAction(object):
@@ -18,27 +20,34 @@ class RobotAction(object):
 
     def __init__(self):
         rospy.init_node('robot_action')
-
+        self.bridge = cv_bridge.CvBridge()
         self.action_sub = rospy.Subscriber('/q_learning/robot_action',RobotMoveDBToBlock,self.action_received)
         self.camera_sub = rospy.Subscriber('/camera/rgb/image_raw',Image,self.camera_received)
         self.scan_sub = rospy.Subscriber('/scan',LaserScan,self.scan_received)
         self.vel_pub = rospy.Publisher('cmd_vel',Twist,queue_size=1)
 
+        
       
         self.current_scan = []
         self.current_img = []
 
-        self.bridge = cv_bridge.CvBridge()
+        
+        rospy.sleep(2)
+        print('done')
 
         self.color_info = { #HSV upper and lower bounds for each color (need to test these ranges work)
-            'red':{'lower':np.array([155,25,0]),'upper':np.array([179,255,255])},
+            'red':{'lower':np.array([0,0,150]),'upper':np.array([10,10,180])},
             'blue':{'lower':np.array([110,50,50]),'upper':np.array([130,255,255])},
             'green':{'lower':np.array([45,100,50]),'upper':np.array([75,255,255])}
         }
+    
+    def run(self):
+        rospy.spin()
 
     def action_received(self,data):
 
         color = data.robot_db
+        print(data)
 
         #first scan around for dumbell
         self.locate_dumbell(color)
@@ -55,6 +64,7 @@ class RobotAction(object):
         
         image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
         image = cv2.cvtColor(image,cv2.COLOR_BGR2HSV) #convert to HSV
+        #print(np.unique(image))
         self.current_img = image
 
     def locate_dumbell(self,color): #spin around until dumbell color is in sight
@@ -62,19 +72,13 @@ class RobotAction(object):
         msg = Twist()
         msg.angular.z = np.pi / 12.0 #turn until color appears in camera
         upper, lower = self.color_info[color]['upper'], self.color_info[color]['lower']
-
         while not found:
-            
             mask = cv2.inRange(self.current_img,lower,upper) #code from line follower to detect color
-            h, w, d = self.current_img.shape
-            search_top = int(3*h/4)
-            search_bot = int(3*h/4 + 20)
-            mask[0:search_top, 0:w] = 0
-            mask[search_bot:h, 0:w] = 0
-            M = cv2.moments(mask)
-
-            if M['m00'] > 0:
+            print(np.sum(mask),np.sum(self.current_img))
+            if np.sum(mask) > 0:
                 found = True
+                self.vel_pub.publish(Twist())
+                print('sdf')
             else:
                 self.vel_pub.publish(msg)
             
@@ -104,7 +108,7 @@ class RobotAction(object):
 
                 err_lin = max(0,front_dist - stop_dist)
                 msg.linear.x = 0.5*err_lin
-                msg.angular.z = k_p * err_ang
+                msg.angular.z = k_ang * err_ang
                 self.vel_pub.publish(msg)
     
     def detect_block(self):
@@ -117,4 +121,6 @@ class RobotAction(object):
     def scan_received(self,data):
         self.current_scan = data
     
-    
+if __name__ == '__main__':
+    r = RobotAction()
+    r.run()
