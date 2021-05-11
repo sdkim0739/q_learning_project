@@ -10,15 +10,13 @@ class ActionTest():
     def __init__(self):
         rospy.init_node('action_test')
         self.action_pub = rospy.Publisher('/q_learning/robot_action',RobotMoveDBToBlock,queue_size=1)
-        print('a')
         rospy.sleep(2)
-        print('b')
         self.test()
     
     def test(self):
         print('testing...')
         msg = RobotMoveDBToBlock()
-        msg.robot_db = 'red'
+        msg.robot_db = 'green'
         msg.block_id = 1
         self.action_pub.publish(msg)
 

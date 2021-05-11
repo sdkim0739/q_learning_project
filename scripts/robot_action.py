@@ -19,8 +19,8 @@ class RobotAction(object):
     #Can the robot capture all three dumbells/blocks in one camera frame?
 
     def __init__(self):
-        cv2.namedWindow('window',1)
         rospy.init_node('robot_action')
+        rospy.on_shutdown(self.shutdown)
         self.bridge = cv_bridge.CvBridge()
         self.action_sub = rospy.Subscriber('/q_learning/robot_action',RobotMoveDBToBlock,self.action_received)
         self.camera_sub = rospy.Subscriber('/camera/rgb/image_raw',Image,self.camera_received)
@@ -34,16 +34,20 @@ class RobotAction(object):
 
         
         rospy.sleep(2)
-        print('done')
 
+      
+        #60 255 178
         self.color_info = { #HSV upper and lower bounds for each color (need to test these ranges work)
             'red':{'lower':np.array([0,250,150]),'upper':np.array([10,255,180])},
-            'blue':{'lower':np.array([110,50,50]),'upper':np.array([130,255,255])},
-            'green':{'lower':np.array([45,100,50]),'upper':np.array([75,255,255])}
+            'blue':{'lower':np.array([110,250,150]),'upper':np.array([130,255,190])},
+            'green':{'lower':np.array([45,250,150]),'upper':np.array([75,255,190])}
         }
     
     def run(self):
         rospy.spin()
+    
+    def shutdown(self):
+        self.vel_pub.publish(Twist())
 
     def action_received(self,data):
 
@@ -66,7 +70,7 @@ class RobotAction(object):
         image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
         image = cv2.cvtColor(image,cv2.COLOR_BGR2HSV) #convert to HSV
 
-        w,h,c = image.shape
+        # w,h,c = image.shape
         # print(image[w//3:2*w//3,h//3:2*h//3,:])
         
         self.current_img = image
@@ -80,20 +84,22 @@ class RobotAction(object):
             mask = cv2.inRange(self.current_img,lower,upper) #code from line follower to detect color
             w,h = mask.shape
             mask = mask[w//3:2*w//3,h//3:2*h//3]
-            print(np.sum(mask),np.sum(self.current_img))
+            # print(np.sum(mask),np.sum(self.current_img))
             if np.sum(mask) > 0:
                 found = True
                 self.vel_pub.publish(Twist())
-                print('sdf')
+              
             else:
                 self.vel_pub.publish(msg)
             
     def move_to_dumbell(self,color):
 
         upper, lower = self.color_info[color]['upper'], self.color_info[color]['lower']
+        front_dist = np.inf
+        stop_dist = 0.5
         
-        
-        while True: #TODO: stop when close enough to dumbell
+        while front_dist > stop_dist: #TODO: stop when close enough to dumbell
+            
             mask = cv2.inRange(self.current_img, lower, upper)
             twist = Twist()
             M = cv2.moments(mask)
@@ -101,24 +107,25 @@ class RobotAction(object):
             img = cv2.cvtColor(self.current_img,cv2.COLOR_HSV2BGR)
 
             if M['m00'] > 0:
-                # determine the center of the yellow pixels in the image
+
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
-                print(cx,cy)
+                # print(cx,cy)
 
                 # visualize a red circle in our debugging window to indicate
                 # the center point of the yellow pixels
-                cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
+                # cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
 
             
                 err = w/2 - cx
+                if err < 100:
+                    front_dist = self.current_scan.ranges[0]
                 k_p = 1.0 / 100.0
-                twist.linear.x = 0.2
+                k_lin = 1.0
+                twist.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
                 twist.angular.z = k_p * err
                 self.vel_pub.publish(twist)
-
-            cv2.imshow("window", img)
-            # cv2.waitKey(3)
+                
         
     def detect_block(self):
         pass
