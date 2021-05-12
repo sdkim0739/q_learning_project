@@ -6,6 +6,8 @@ Stephanie Kim ([stephaniekim@uchicago.edu](mailto:stephaniekim@uchicago.edu))
 
 Oscar Michel ([ojmichel@uchicago.edu](mailto:ojmichel@uchicago.edu))
 
+## Implementation Plan:
+
 ## Q-Learning Algorithm
 
 ### Executing the Q-Learning algorithm
@@ -68,6 +70,69 @@ To pick up, first we will use the odometry to return the origin point. Once ther
 **Robot perception**: May 5
 
 **Robot manipulation & movement**: May 11
+
+## Objectives
+Our main objective was to use reinforcement learning to train the Turtlebot to drop dumbbells in front of blocks in such a manner that maximizes reward. To do this, our task was to use the Q-Learning algorithm, robot perception, and robot manipulation and movement using the OpenMANIPULATOR arm.
+
+## High-level description
+Through keeping track of the last `n` meaningful changes in Q-value during training, we outputted a Q-Matrix whose actions at select states maximize reward, subsequently becoming the goal of the robot's perception and movement.
+
+## Q-Learning algorithm
+
+### Selecting / executing actions:
+
+**Code location**:
+
+### Updating the Q-matrix:
+
+**Code location**:
+
+### Determining convergence of the Q-Learning algorithm:
+
+**Code location**:
+
+### Executing the path of maximum reward:
+
+**Code location**:
+
+
+## Robot perception
+
+### Identifying locations & identities of the dumbbells:
+
+**Code location**:
+
+### Identifying locations & identities of the blocks:
+
+**Code location**:
+
+
+## Robot manipulation and movement
+
+### Moving to the right spot to pick up a dumbbell:
+
+**Code location**:
+
+### Picking up the dumbbell:
+
+**Code location**:
+
+### Moving to the desired block:
+
+**Code location**:
+
+### Putting down the dumbbell:
+
+**Code location**:
+
+
+## Challenges
+
+
+## Future work
+
+
+## Takeaways
 
 
 

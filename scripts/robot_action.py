@@ -12,13 +12,10 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 import keras_ocr
 
-# pipeline = keras_ocr.pipeline.Pipeline()
+pipeline = keras_ocr.pipeline.Pipeline()
 
 
 class RobotAction(object):
-
-    #TODO:
-    #Can the robot capture all three dumbells/blocks in one camera frame?
 
     def __init__(self):
         rospy.init_node('robot_action')
@@ -51,7 +48,7 @@ class RobotAction(object):
         self.move_group_gripper = moveit_commander.MoveGroupCommander("gripper")
 
         # Set initial arm position
-        self.move_group_arm.go([0.0, 0.65, 0.15, -0.79], wait=True)
+        self.move_group_arm.go([0.0, 0.65, 0.05, -0.79], wait=True)
         self.move_group_gripper.go([0.009, 0.009], wait=True)
         print("ready")
     
@@ -67,33 +64,29 @@ class RobotAction(object):
         block = data.block_id
 
         #first scan around for dumbell
-        # self.locate_dumbell(color)
+        self.locate_dumbell(color)
         #move to dumbell
-        # self.move_to_dumbell(color)
+        self.move_to_dumbell(color)
         #pickup dumbell
         self.lift_dumbbell()
 
         self.move_to_block(block)
-        #scan for block
-        self.detect_block()
-        #move to block
+
         #put dumbell down
         self.drop_dumbbell()
 
 
     def camera_received(self,data):
-        pass
-        '''image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
+        image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
         image = cv2.cvtColor(image,cv2.COLOR_BGR2HSV) #convert to HSV
 
         # w,h,c = image.shape
         # print(image[w//3:2*w//3,h//3:2*h//3,:])
         
-        self.current_img = image'''
+        self.current_img = image
 
     def locate_dumbell(self,color): #spin around until dumbell color is in sight
-        pass
-        '''found = False
+        found = False
         msg = Twist()
         msg.angular.z = np.pi / 12.0 #turn until color appears in camera
         upper, lower = self.color_info[color]['upper'], self.color_info[color]['lower']
@@ -107,13 +100,13 @@ class RobotAction(object):
                 self.vel_pub.publish(Twist())
               
             else:
-                self.vel_pub.publish(msg)'''
+                self.vel_pub.publish(msg)
             
     def move_to_dumbell(self,color):
 
         upper, lower = self.color_info[color]['upper'], self.color_info[color]['lower']
         front_dist = np.inf
-        stop_dist = 0.5
+        stop_dist = 0.2
         
         while front_dist > stop_dist: #TODO: stop when close enough to dumbell
             
@@ -169,7 +162,7 @@ class RobotAction(object):
         self.vel_pub.publish(Twist())
 
         front_dist = np.inf
-        stop_dist = 0.5
+        stop_dist = 0.2
         
         while front_dist > stop_dist: #now that block is in frame, move to block
             
@@ -203,13 +196,7 @@ class RobotAction(object):
             for _ in range(2):
                 self.vel_pub.publish(msg)
                 r.sleep()
-            self.vel_pub.publish(Twist())
-
-
-
-              
-            
-                
+            self.vel_pub.publish(Twist())         
         
     def lift_dumbbell(self):
         print("lifting dumbbell")
@@ -219,7 +206,7 @@ class RobotAction(object):
         self.move_group_gripper.stop()
         
         # Lift arm up
-        arm_joint_goal = [0.0, 0.35, 0.15, -0.79]
+        arm_joint_goal = [0.0, 0.05, -0.15, -0.79]
         self.move_group_arm.go(arm_joint_goal, wait=True)
         # Calling ``stop()`` ensures that there is no residual movement
         self.move_group_arm.stop()
@@ -227,7 +214,7 @@ class RobotAction(object):
     def drop_dumbbell(self):
         print("dropping dumbbell")
         # Drop arm down
-        arm_joint_goal = [0.0, 0.65, 0.15, -0.79]
+        arm_joint_goal = [0.0, 0.65, 0.05, -0.79]
         self.move_group_arm.go(arm_joint_goal, wait=True)
         # Calling ``stop()`` ensures that there is no residual movement
         self.move_group_arm.stop()

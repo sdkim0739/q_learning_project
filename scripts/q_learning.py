@@ -3,6 +3,7 @@
 import rospy
 import numpy as np
 import os
+from q_learning_project.msg import QMatrix, QMatrixRow
 
 # Path of directory on where this file is located
 path_prefix = os.path.dirname(__file__) + "/action_states/"
@@ -11,6 +12,9 @@ class QLearning(object):
     def __init__(self):
         # Initialize this node
         rospy.init_node("q_learning")
+
+        # Subscribe to the Q-matrix topic
+        self.q_matrix_sub = rospy.Subscriber("/q_learning/q_matrix", QMatrix, self.save_q_matrix)
 
         # Fetch pre-built action matrix. This is a 2d numpy array where row indexes
         # correspond to the starting state and column indexes are the next states.
@@ -44,9 +48,14 @@ class QLearning(object):
         self.states = np.loadtxt(path_prefix + "states.txt")
         self.states = list(map(lambda x: list(map(lambda y: int(y), x)), self.states))
 
-    def save_q_matrix(self):
+    # Reference: https://stackoverflow.com/questions/33686747/save-a-list-to-a-txt-file
+    def save_q_matrix(self, data):
         # TODO: You'll want to save your q_matrix to a file once it is done to
         # avoid retraining
+        with open("q_matrix.txt", 'w') as output:
+            for q_matrix_row in data.q_matrix:
+                output.write(str(q_matrix_row) + '\n')
+
         return
 
 if __name__ == "__main__":

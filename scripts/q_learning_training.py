@@ -92,9 +92,7 @@ class QLearningTraining(object):
 
         # Update Q(s,a)
         Q_s_a = data.reward + gamma * max(self.q_matrix_arr[self.new_state])
-        print("New Q-value: {}".format(Q_s_a))
         old_q_value = self.q_matrix_arr[self.current_state, self.current_action]
-        print("Old Q-value: {}".format(old_q_value))
 
         # Append the change in Q-value to q_history to see whether Q-value changes are plateauing
         self.q_history.append(Q_s_a - old_q_value)
@@ -135,12 +133,7 @@ class QLearningTraining(object):
         # 1) the last 100 q-value differences are below the plateau threshold
         # 2) we have iterated at least 10000 times 
         # TODO: debugging
-        if len(self.q_history) > 10000 and max(self.q_history[-100:]) < max_diff:
-            print(self.q_history)
-            print("CONVERGED!")
-            return True
-        return False
-        # return len(self.q_history) == 300 and max(self.q_history[-20:]) < max_diff
+        return len(self.q_history) > 10000 and max(self.q_history[-100:]) < max_diff
     
     def convert_send_qmatrix_msg(self): # Converts numpy array to QMatrix msg
         for i in range(len(self.q_matrix_arr)):
