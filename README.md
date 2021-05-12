@@ -103,22 +103,22 @@ Our standard for convergence was that the last 100 Q-value changes (in `q_histor
 ## Robot perception
 
 ### Identifying locations & identities of the dumbbells: 
-**TODO: Oscar**
+The robot spins around until the color of the desired dumbbell is in the center of the robot's camera frame. 
 
-**Code location**: **TODO: Oscar**
+**Code location**: The `locate_dumbell ` method in `robot_action.py`
 
 ### Identifying locations & identities of the blocks:
-**TODO: Oscar**
+The robot will repeatdely rotate 45 degrees and then send its camera footage to the `keras_ocr`. If the desired digit is detected, the robot will stop rotating and initiate the movement phase. Otherwise, the robot will continue to rotate and use the detector until the correct digit comes into view. We also account for common detector errors, such as identifying 1 as l.  
 
-**Code location**: **TODO: Oscar**
+**Code location**: The `move_to_block` method in the `robot_action.py` file
 
 
 ## Robot manipulation and movement
 
 ### Moving to the right spot to pick up a dumbbell:
-**TODO: Oscar**
+Once the correct dumbell is idenfitied, the robot uses proportional control to drive toward the dumbell. For angular velocity, the center of the color is computed as done in the line-follower demo. The pixel location of this center is used to compute the angular error. We also use proportional control in the linear direciton by looking at the scan topic to see the robot's distance to the object at zero degrees. To make sure this object is the correct dumbell, and not some other dumbell or block, we only update the linear velocity when the angular error is small enough. This ensures that the robot is properly alligned with the dumbell so it will be located at zero degrees. 
 
-**Code location**: **TODO: Oscar**
+**Code location**: The `move_to_dumbell` method in `robot_action.py`
 
 ### Picking up the dumbbell:
 When the world is initialized, the robot arm should already be in a position where the gripper is aligned with the dumbbell handle. To lift the dumbbell, the robot need only close the gripper around the handle, and then it adjusts a couple of its joints to raise the arm above the ground.
@@ -126,9 +126,9 @@ When the world is initialized, the robot arm should already be in a position whe
 **Code location**: **TODO: Steph**
 
 ### Moving to the desired block:
-**TODO: Oscar**
+Once the desired block number is identified, the robot moves to the front using proportional control. The amount angular error is computed using the center of the bounding box returned by the detector. Often, the robot's camera will be in view of adjacent faces of the same block. This will return multiple bounding boxes for the same digit. To make sure the robot is moving to the front of the block, and not the side, we use the bounding box with higher area. 
 
-**Code location**: **TODO: Oscar**
+**Code location**: The `move_to_block` method in the `robot_action.py` file
 
 ### Putting down the dumbbell:
 To place the dumbbell back down, the robot arm joints move back to their starting position at world initialization. Since the robot arm is gripping the dumbbell throughout this process, the dumbbell should be touching the ground when it is back in the initial position. The robot then opens the gripper to let go of the dumbbell.
@@ -137,15 +137,16 @@ To place the dumbbell back down, the robot arm joints move back to their startin
 
 
 ## Challenges
-Honestly, the whole project was a challenge! Each of the three main components were time-consuming and difficult in their own ways. Determining convergence for the Q-Learning algorithm was certainly a hurdle, because all we could do was continually tweak the parameters until we hit a set of them that allowed for convergence. Even then, it might still not as perfect as it could be, depending on if we're also using optimal learning rate and gamma values. The robot perception and movement was possibly even more complicated. **TODO: Oscar?** The difficulties with the robot arm manipulation were similar to those of determining convergence. We had to find angles for the arm joints that allowed the gripper to align with the dumbbell without tipping over the robot (this happened frequently in testing with the GUI). Determining the gripper width was also a hassle, because it's difficult to tell when it's precisely too tight or too loose. Eventually, we just settled on a gripper width as long as the dumbbell didn't drop out or get squeezed out of the gripper.
+Honestly, the whole project was a challenge! Each of the three main components were time-consuming and difficult in their own ways. Determining convergence for the Q-Learning algorithm was certainly a hurdle, because all we could do was continually tweak the parameters until we hit a set of them that allowed for convergence. Even then, it might still not as perfect as it could be, depending on if we're also using optimal learning rate and gamma values. The robot perception and movement was possibly even more complicated. We had a lot of trouble finding the correct color ranges for the dumbell. Ultimately what we did was place the robot in front of each dumbell in Gazebo and print the pixel values at the center of its camera. Also, proportional control is difficult to integrate with the task of recognition simultaneously. If the robot moves to far off course, the correct block may go out of view and the robot will not know how to navigate bac. The difficulties with the robot arm manipulation were similar to those of determining convergence. We had to find angles for the arm joints that allowed the gripper to align with the dumbbell without tipping over the robot (this happened frequently in testing with the GUI). Determining the gripper width was also a hassle, because it's difficult to tell when it's precisely too tight or too loose. Eventually, we just settled on a gripper width as long as the dumbbell didn't drop out or get squeezed out of the gripper.
 
 ## Future work
 The Q-Learning convergence might still be less inaccurate than we would like. If we had more time, we would've played with the learning rate and set it equal to values != 1 to test how this affects convergence. I think it would also have been good for us to conference with one another and more precisely predict the Q-matrix should output; we didn't quite do this part synchronously, but rather looked at the Q-Learning code individually.
-**TODO: anyone add more**
+
+It would be good to experiemnt with better ways to integrate the `keras_ocr` detector with the robot's movements. The robot's movement is very slow when moving to the blocks because the detector is slow. It might be better to leverage the detector with the camera and scan topics so that the robot relies on the detector less. Doing this would speed up the movement. 
 
 ## Takeaways
 1. Again, timing and proper pacing of the project is always a skill that can be worked on. For this project specifically, there were so many details and components that it was hard to tell which part would be the most time-consuming, if any. Thus, despite our initial timeline, it was hard for us to split up the project over the 2 weeks we had by component, since some ended up taking more time than others. I think in the future, as long as we make decent progress consistently on the project, it shouldn't need to matter that much which component of the project is getting completed on which day.
-2. **TODO: anyone**
+2. One thing that was very interesting about this project is the problem of integrating perception and motion. It is very difficult to do this effectively, especially without a map of the environment and information about the robot's exact location.
 
 
 
