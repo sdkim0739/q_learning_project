@@ -106,7 +106,7 @@ class RobotAction(object):
 
         upper, lower = self.color_info[color]['upper'], self.color_info[color]['lower']
         front_dist = np.inf
-        stop_dist = 0.2
+        stop_dist = 0.20
         
         while front_dist > stop_dist: #TODO: stop when close enough to dumbell
             
@@ -162,7 +162,7 @@ class RobotAction(object):
         self.vel_pub.publish(Twist())
 
         front_dist = np.inf
-        stop_dist = 0.2
+        stop_dist = 0.35
         
         while front_dist > stop_dist: #now that block is in frame, move to block
             
@@ -173,23 +173,26 @@ class RobotAction(object):
             correct_box_idx = 0
             max_area = 0
             pred = self.pipeline.recognize([self.current_img])[0]
-            for i in range(len(pred)):
-                label, bb = pred[i][0], pred[i][1]
-                if label in dig_map[block]:
-                    area = (bb[0][0] - bb[2][0])*(bb[1][1] - bb[3][1])
-                    if area > max_area: #make sure we're looking at the right face (will have largest area)
-                        max_area = area
-                        correct_box_idx = i
-            bbox = pred[correct_box_idx][1]
-            cx = np.mean(bbox[:,0])
+            if pred:
+                for i in range(len(pred)):
+                    label, bb = pred[i][0], pred[i][1]
+                    if label in dig_map[block]:
+                        area = (bb[0][0] - bb[2][0])*(bb[1][1] - bb[3][1])
+                        if area > max_area: #make sure we're looking at the right face (will have largest area)
+                            max_area = area
+                            correct_box_idx = i
+                bbox = pred[correct_box_idx][1]
+                cx = np.mean(bbox[:,0])
 
-            # print(bbox, pred[correct_box_idx][0],cx,correct_box_idx)
-        
-            err = w/2 - cx
-            if err < 100:
+                # print(bbox, pred[correct_box_idx][0],cx,correct_box_idx)
+            
+                err = w/2 - cx
+                if err < 100:
+                    front_dist = self.current_scan.ranges[0]
+            else:
                 front_dist = self.current_scan.ranges[0]
             k_p = 1.0 / 400.0
-            k_lin = 0.25
+            k_lin = 0.5
             msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
             msg.angular.z = k_p * err
             r = rospy.Rate(2)
