@@ -9,15 +9,16 @@ from q_learning_project.msg import QLearningReward, QMatrix, QMatrixRow, RobotMo
 class QLearningTraining(object):
     # Initialize publishers and subscribers
     def __init__(self):
-        # Subscribe to environment to receive reward updates
-        self.reward = rospy.Subscriber("/q_learning/reward", QLearningReward, self.update_q_matrix)
-        
         # Publish Q-matrix updates to Q-matrix topic
         self.q_matrix_pub = rospy.Publisher("/q_learning/QMatrix", QMatrix, queue_size=10)
 
         # Publish to /robot_action for phantom robot movement
         self.q_learning = QLearning()
         self.action_pub = rospy.Publisher("/q_learning/robot_action", RobotMoveDBToBlock, queue_size=10)
+
+        # Subscribe to environment to receive reward updates
+        self.reward = rospy.Subscriber("/q_learning/reward", QLearningReward, self.update_q_matrix)
+        rospy.sleep(1)
 
         # Initialize Q-matrix
         self.q_matrix = QMatrix()
@@ -34,14 +35,14 @@ class QLearningTraining(object):
         # Get new state and action from starting state
         new_state, action = self.get_random_action(self.current_state)
 
-        # Current action is action from above
+        # Current action is action from above (action from current state to new state)
         self.current_action = action
 
         # Keep track of new state
         self.new_state = new_state
 
         # Move the robot according to the current action
-        self.phantom_robot_move_DB(self.current_action) # update_q_matrix() will be called as callback
+        self.move_DB(self.current_action) # update_q_matrix() will be called as callback
         
 
     # Selects a random valid action from the current state
@@ -49,24 +50,26 @@ class QLearningTraining(object):
         # Stores all valid actions at the current state
         valid_actions = []
 
-        # Search the actions at the current state for the valid ones
-        for (s,a) in enumerate(self.q_learning.action_matrix[state]):
-            if int(a) != -1: # If valid, append to valid_actions
+        # Search each next possible state from the current state
+        for (s, a) in enumerate(self.q_learning.action_matrix[state]):
+            # If valid, append to valid_actions
+            if int(a) != -1:
                 valid_actions.append((s, int(a)))
 
         # Select a random action among the valid actions
         if len(valid_actions) > 0:
             (new_state, action) = random.choice(valid_actions)
-            print("Valid action {0} exists from state {1}".format(new_state, action))
+            print("Valid action {1} exists to state {0}".format(new_state, action))
             return (new_state, action)
         else: # Otherwise, reset to the initial state
-            # TODO: update internal state to match reset world
-            print("No valid actions exist")
-            return (0, 0)
+            self.current_state = 0
+            s_a_from_origin = self.get_random_action(0)
+            print("No valid actions exist. Taking action {} from state 0".format(s_a_from_origin[1]))
+            return s_a_from_origin
 
 
     # TESTING: "Moves" the phantom robot to move dumbbells to blocks
-    def phantom_robot_move_DB(self, action):
+    def move_DB(self, action):
         self.test_movement = RobotMoveDBToBlock()
 
         # Take the first action
@@ -77,23 +80,25 @@ class QLearningTraining(object):
         self.test_movement.block_id = current_action['block']
 
         # Publish the action to the phantom bot
-        rospy.sleep(1)
         self.action_pub.publish(self.test_movement)
+        print(self.test_movement)
 
     def update_q_matrix(self, data):
         # data.reward receives the reward
         print("Reward: {}".format(data.reward))
-        print("Reward: {}".format(data.iteration_num))
+        print("Iteration: {}".format(data.iteration_num))
         # Discount factor
-        gamma = 0.5
+        gamma = 0.9
 
         # Update Q(s,a)
         Q_s_a = data.reward + gamma * max(self.q_matrix_arr[self.new_state])
-        print("Q-value: {}".format(Q_s_a))
+        print("New Q-value: {}".format(Q_s_a))
         old_q_value = self.q_matrix_arr[self.current_state, self.current_action]
+        print("Old Q-value: {}".format(old_q_value))
 
         # Append the change in Q-value to q_history to see whether Q-value changes are plateauing
         self.q_history.append(Q_s_a - old_q_value)
+        print("Q-value diff: {}".format(Q_s_a - old_q_value))
         
         # Update the Q-matrix in the current spot with the new Q-value
         self.q_matrix_arr[self.current_state, self.current_action] = Q_s_a
@@ -104,16 +109,21 @@ class QLearningTraining(object):
 
         # If not converged:
         if not self.has_converged():
-            # Select the next action
-            new_state, action = self.get_random_action(self.new_state)
-
-            # Update current state to new current state, and new state to next state
+            # Update the current state
             self.current_state = self.new_state
+
+            # Select the next action
+            new_state, action = self.get_random_action(self.current_state)
+
+            # Update the new state
             self.new_state = new_state
             self.current_action = action
 
             # Perform the next action
-            self.phantom_robot_move_DB(self.current_action)
+            self.move_DB(self.current_action)
+        else:
+            print(self.q_matrix_arr)
+            return
 
     # Determines when the Q-matrix has converged
     def has_converged(self):
@@ -122,14 +132,15 @@ class QLearningTraining(object):
         max_diff = 0.01
 
         # Algo has converged if 
-        # 1) the last 50 q-value differences are below the plateau threshold
-        # 2) we have iterated at least 100 times 
+        # 1) the last 100 q-value differences are below the plateau threshold
+        # 2) we have iterated at least 10000 times 
         # TODO: debugging
-        if len(self.q_history) > 150 and max(self.q_history[-50:]) < max_diff:
-                print("Q-matrix: {}".format(self.q_matrix_arr))
-                return True
+        if len(self.q_history) > 10000 and max(self.q_history[-100:]) < max_diff:
+            print(self.q_history)
+            print("CONVERGED!")
+            return True
         return False
-        # return max(self.q_history[-10:]) < max_diff and len(self.q_history) > 30
+        # return len(self.q_history) == 300 and max(self.q_history[-20:]) < max_diff
     
     def convert_send_qmatrix_msg(self): # Converts numpy array to QMatrix msg
         for i in range(len(self.q_matrix_arr)):
@@ -138,11 +149,9 @@ class QLearningTraining(object):
 
         # Publish Q-matrix message to Q-matrix topic
         self.q_matrix_pub.publish(self.q_matrix)
-        rospy.sleep(0.5)
 
     # Runs until shutdown
     def run(self):
-        # TESTING: Move the dumbbells with the phantom bot
         rospy.spin()
 
 # Runs file
