@@ -8,7 +8,7 @@ from q_learning_project.msg import RobotMoveDBToBlock
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-# import keras_ocr
+import keras_ocr
 
 # pipeline = keras_ocr.pipeline.Pipeline()
 
@@ -27,6 +27,7 @@ class RobotAction(object):
         self.scan_sub = rospy.Subscriber('/scan',LaserScan,self.scan_received)
         self.vel_pub = rospy.Publisher('cmd_vel',Twist,queue_size=1)
 
+        self.pipeline = keras_ocr.pipeline.Pipeline()
         
       
         self.current_scan = []
@@ -52,14 +53,14 @@ class RobotAction(object):
     def action_received(self,data):
 
         color = data.robot_db
-        print(data)
+        block = data.block_id
 
         #first scan around for dumbell
-        self.locate_dumbell(color)
+        # self.locate_dumbell(color)
         #move to dumbell
-        self.move_to_dumbell(color)
+        # self.move_to_dumbell(color)
         #pickup dumbell
-
+        self.move_to_block(block)
         #scan for block
         #move to block
         #put dumbell down
@@ -127,8 +128,72 @@ class RobotAction(object):
                 self.vel_pub.publish(twist)
                 
         
-    def detect_block(self):
-        pass
+    def move_to_block(self,block):
+
+        dig_map = { #commonly returned labels for digits
+            1: {'1','i','l'},
+            2: {'2','s'},
+            3: {'3','t','5'}
+        }
+        found = False #first turn until facing the correct block
+        msg = Twist()
+        msg.angular.z = -1.0 *np.pi / 8.0 #turn until color appears in camera
+        while not found:
+            pred = self.pipeline.recognize([self.current_img])[0]
+            for (label,bb) in pred:
+                print(label,bb)
+                if label in dig_map[block]:
+                    found = True
+            if not found:
+                r = rospy.Rate(2)
+                for _ in range(4):
+                    self.vel_pub.publish(msg)
+                    r.sleep()
+                self.vel_pub.publish(Twist())
+        self.vel_pub.publish(Twist())
+
+        front_dist = np.inf
+        stop_dist = 0.5
+        
+        while front_dist > stop_dist: #now that block is in frame, move to block
+            
+            msg = Twist()
+           
+            h,w,d = self.current_img.shape
+
+            correct_box_idx = 0
+            max_area = 0
+            pred = self.pipeline.recognize([self.current_img])[0]
+            for i in range(len(pred)):
+                label, bb = pred[i][0], pred[i][1]
+                if label in dig_map[block]:
+                    area = (bb[0][0] - bb[2][0])*(bb[1][1] - bb[3][1])
+                    if area > max_area: #make sure we're looking at the right face (will have largest area)
+                        max_area = area
+                        correct_box_idx = i
+            bbox = pred[correct_box_idx][1]
+            cx = np.mean(bbox[:,0])
+
+            # print(bbox, pred[correct_box_idx][0],cx,correct_box_idx)
+        
+            err = w/2 - cx
+            if err < 100:
+                front_dist = self.current_scan.ranges[0]
+            k_p = 1.0 / 400.0
+            k_lin = 0.25
+            msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
+            msg.angular.z = k_p * err
+            r = rospy.Rate(2)
+            for _ in range(2):
+                self.vel_pub.publish(msg)
+                r.sleep()
+            self.vel_pub.publish(Twist())
+
+
+
+              
+            
+                
         
 
 
