@@ -80,59 +80,72 @@ Through keeping track of the last `n` meaningful changes in Q-value during train
 ## Q-Learning algorithm
 
 ### Selecting / executing actions:
+From the current state, we selected a random valid action. Invalidity was defined by the action being equivalent to -1 in the action matrix. Our function `get_random_action` filters for the possible valid actions from the current state, and then selects one at random. If all blocks are occupied by a dumbbell at the current state, the current state resets to 0 (the origin state) and executes a random valid action from there.
 
 **Code location**:
 
-### Updating the Q-matrix:
+### Updating the Q-matrix: 
+We update the Q-matrix in the callback function to the `/q_learning/reward` subscriber, `update_q_matrix()`. This function mainly makes use of the Q-Learning algorithm from class to calculate the new Q-value for the current state and action being performed. The change in Q-value is additionally appended to `q_history`, an array that keeps track of the last `n` meaningful changes. If the Q-matrix has not yet converged, we move to the new state and repeat the algorithm.
 
-**Code location**:
+**Code location**: **TODO: Steph**
 
 ### Determining convergence of the Q-Learning algorithm:
+Our standard for convergence was that the last 100 Q-value changes (in `q_history`) would all have to be less than `max_diff`, 0.01, and that there must be at least 10000 iterations. The numbers were chosen mainly through guess-and-check; initially, our numbers for the last `n` changes and the iterations were too small, which caused convergence far too early. `max_diff` was also decreased incrementally until we reached a satisfactory number in testing.
 
-**Code location**:
+**Code location**: **TODO: Steph**
 
 ### Executing the path of maximum reward:
+**TODO: Steph or anyone**
 
-**Code location**:
+**Code location**: **TODO: Steph or anyone**
 
 
 ## Robot perception
 
-### Identifying locations & identities of the dumbbells:
+### Identifying locations & identities of the dumbbells: 
+**TODO: Oscar**
 
-**Code location**:
+**Code location**: **TODO: Oscar**
 
 ### Identifying locations & identities of the blocks:
+**TODO: Oscar**
 
-**Code location**:
+**Code location**: **TODO: Oscar**
 
 
 ## Robot manipulation and movement
 
 ### Moving to the right spot to pick up a dumbbell:
+**TODO: Oscar**
 
-**Code location**:
+**Code location**: **TODO: Oscar**
 
 ### Picking up the dumbbell:
+When the world is initialized, the robot arm should already be in a position where the gripper is aligned with the dumbbell handle. To lift the dumbbell, the robot need only close the gripper around the handle, and then it adjusts a couple of its joints to raise the arm above the ground.
 
-**Code location**:
+**Code location**: **TODO: Steph**
 
 ### Moving to the desired block:
+**TODO: Oscar**
 
-**Code location**:
+**Code location**: **TODO: Oscar**
 
 ### Putting down the dumbbell:
+To place the dumbbell back down, the robot arm joints move back to their starting position at world initialization. Since the robot arm is gripping the dumbbell throughout this process, the dumbbell should be touching the ground when it is back in the initial position. The robot then opens the gripper to let go of the dumbbell.
 
-**Code location**:
+**Code location**: **TODO: Steph**
 
 
 ## Challenges
-
+Honestly, the whole project was a challenge! Each of the three main components were time-consuming and difficult in their own ways. Determining convergence for the Q-Learning algorithm was certainly a hurdle, because all we could do was continually tweak the parameters until we hit a set of them that allowed for convergence. Even then, it might still not as perfect as it could be, depending on if we're also using optimal learning rate and gamma values. The robot perception and movement was possibly even more complicated. **TODO: Oscar?** The difficulties with the robot arm manipulation were similar to those of determining convergence. We had to find angles for the arm joints that allowed the gripper to align with the dumbbell without tipping over the robot (this happened frequently in testing with the GUI). Determining the gripper width was also a hassle, because it's difficult to tell when it's precisely too tight or too loose. Eventually, we just settled on a gripper width as long as the dumbbell didn't drop out or get squeezed out of the gripper.
 
 ## Future work
-
+The Q-Learning convergence might still be less inaccurate than we would like. If we had more time, we would've played with the learning rate and set it equal to values != 1 to test how this affects convergence. I think it would also have been good for us to conference with one another and more precisely predict the Q-matrix should output; we didn't quite do this part synchronously, but rather looked at the Q-Learning code individually.
+**TODO: anyone add more**
 
 ## Takeaways
+1. Again, timing and proper pacing of the project is always a skill that can be worked on. For this project specifically, there were so many details and components that it was hard to tell which part would be the most time-consuming, if any. Thus, despite our initial timeline, it was hard for us to split up the project over the 2 weeks we had by component, since some ended up taking more time than others. I think in the future, as long as we make decent progress consistently on the project, it shouldn't need to matter that much which component of the project is getting completed on which day.
+2. **TODO: anyone**
 
 
 
