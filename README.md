@@ -95,8 +95,7 @@ Our standard for convergence was that the last 100 Q-value changes (in `q_histor
 **Code location**: `has_converged()` in `q_learning_training.py`
 
 ### Executing the path of maximum reward:
-**TODO: Steph or anyone**
-
+We first load the trained Q Matrix into a 2D array. We then simulate state-action transition by chosing the action with the highest Q-value at each state. This gives the sequence of actions to execute. We execute each aciton in trasition order, but note that the order in which actions are executed does not matter. Actions are executed by publishing a `RobotMoveDBToBlock` message.
 **Code location**: `extract_action()` in `robot_action.py`, `read_q_matrix()` in `q_learning.py`
 
 
