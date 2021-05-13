@@ -11,6 +11,7 @@ from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 import keras_ocr
+from q_learning import QLearning
 
 pipeline = keras_ocr.pipeline.Pipeline()
 
@@ -18,19 +19,21 @@ pipeline = keras_ocr.pipeline.Pipeline()
 class RobotAction(object):
 
     def __init__(self):
-        rospy.init_node('robot_action')
+        # rospy.init_node('robot_action')
         rospy.on_shutdown(self.shutdown)
         self.bridge = cv_bridge.CvBridge()
         self.action_sub = rospy.Subscriber('/q_learning/robot_action',RobotMoveDBToBlock,self.action_received)
         self.camera_sub = rospy.Subscriber('/camera/rgb/image_raw',Image,self.camera_received)
         self.scan_sub = rospy.Subscriber('/scan',LaserScan,self.scan_received)
         self.vel_pub = rospy.Publisher('cmd_vel',Twist,queue_size=1)
+        self.action_pub = rospy.Publisher('/q_learning/robot_action',RobotMoveDBToBlock,queue_size=1)
 
         self.pipeline = keras_ocr.pipeline.Pipeline()
-        
+        self.send_next = True
       
         self.current_scan = []
         self.current_img = []
+        self.q_learning = QLearning()
 
         
         rospy.sleep(2)
@@ -51,6 +54,7 @@ class RobotAction(object):
         self.move_group_arm.go([0.0, 0.9, -0.2, -0.79], wait=True)
         self.move_group_gripper.go([0.009, 0.009], wait=True)
         print("ready")
+        self.extract_action()
     
     def run(self):
         rospy.spin()
@@ -58,13 +62,51 @@ class RobotAction(object):
     def shutdown(self):
         self.vel_pub.publish(Twist())
 
-    def extract_action(self, q_matrix):
+    def extract_action(self):
         # Extract 3 actions from the Q-matrix
 
         # Publish next action if there are actions left to execute
+        
+        actions = []
+        q_matrix_arr = self.q_learning.read_q_matrix()
+        print(q_matrix_arr)
+        states = self.q_learning.states
+        state = 0
+        for i in range(3):
+            max_reward = -1
+            best_action = 0
 
-        return
+            for (action, reward) in enumerate(q_matrix_arr[state]):
+                # print(action,reward)
+                if reward > max_reward:
+                    max_reward = reward
+                    best_action = action
 
+            # print(max_reward)
+            actions.append(best_action)
+            next_state = 0
+            # print(best_action)
+            for (s,a) in enumerate(self.q_learning.action_matrix[state]):
+                # print(type(a),type(action))
+                if int(a) == best_action:
+                    next_state = s
+                    break
+            state = next_state
+        # print(actions)
+        action_msgs = []
+        for a in actions:
+            msg = RobotMoveDBToBlock()
+            msg.block_id = self.q_learning.actions[a]['block']
+            msg.robot_db = self.q_learning.actions[a]['dumbbell']
+            action_msgs.append(msg)
+        # print(action_msgs)
+        
+        while action_msgs:
+            if self.send_next:
+                msg = action_msgs.pop(0)
+                print(msg)
+                self.action_pub.publish(msg)
+                self.send_next = False
 
     def action_received(self,data):
         print("action received")
@@ -82,6 +124,8 @@ class RobotAction(object):
 
         #put dumbell down
         self.drop_dumbbell()
+
+        self.send_next = True
 
 
     def camera_received(self,data):
