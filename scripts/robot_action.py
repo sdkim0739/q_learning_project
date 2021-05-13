@@ -19,6 +19,7 @@ pipeline = keras_ocr.pipeline.Pipeline()
 class RobotAction(object):
 
     def __init__(self):
+    
         # rospy.init_node('robot_action')
         rospy.on_shutdown(self.shutdown)
         self.bridge = cv_bridge.CvBridge()
@@ -54,7 +55,7 @@ class RobotAction(object):
         self.move_group_arm.go([0.0, 0.9, -0.2, -0.79], wait=True)
         self.move_group_gripper.go([0.009, 0.009], wait=True)
         print("ready")
-        self.extract_action()
+        # self.extract_action()
     
     def run(self):
         rospy.spin()
@@ -72,11 +73,14 @@ class RobotAction(object):
         print(q_matrix_arr)
         states = self.q_learning.states
         state = 0
+
+        #We simulate the state action transition to get the action sequences
         for i in range(3):
             max_reward = -1
             best_action = 0
 
-            for (action, reward) in enumerate(q_matrix_arr[state]):
+            for (action, reward) in enumerate(q_matrix_arr[state]): 
+                #chose the action with the highest reward for a given state
                 # print(action,reward)
                 if reward > max_reward:
                     max_reward = reward
@@ -86,6 +90,7 @@ class RobotAction(object):
             actions.append(best_action)
             next_state = 0
             # print(best_action)
+            #get the next state from the action
             for (s,a) in enumerate(self.q_learning.action_matrix[state]):
                 # print(type(a),type(action))
                 if int(a) == best_action:
@@ -95,13 +100,15 @@ class RobotAction(object):
         # print(actions)
         action_msgs = []
         for a in actions:
+            #construct action message
             msg = RobotMoveDBToBlock()
             msg.block_id = self.q_learning.actions[a]['block']
             msg.robot_db = self.q_learning.actions[a]['dumbbell']
             action_msgs.append(msg)
-        # print(action_msgs)
+        print(action_msgs)
         
         while action_msgs:
+            #send action messages
             if self.send_next:
                 msg = action_msgs.pop(0)
                 print(msg)
@@ -147,9 +154,9 @@ class RobotAction(object):
             w,h = mask.shape
             mask = mask[w//3:2*w//3,h//3:2*h//3]
             # print(np.sum(mask),np.sum(self.current_img))
-            if np.sum(mask) > 0:
+            if np.sum(mask) > 0: #if this is true, then color detected
                 found = True
-                self.vel_pub.publish(Twist())
+                self.vel_pub.publish(Twist()) 
               
             else:
                 self.vel_pub.publish(msg)
@@ -173,15 +180,10 @@ class RobotAction(object):
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 # print(cx,cy)
-
-                # visualize a red circle in our debugging window to indicate
-                # the center point of the yellow pixels
-                # cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
-
             
                 err = w/2 - cx
                 if err < 100:
-                    front_dist = self.current_scan.ranges[0]
+                    front_dist = self.current_scan.ranges[0] #only adjust linear when aligned to dumbell
                 k_p = 1.0 / 100.0
                 k_lin = 1.0
                 twist.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
@@ -200,12 +202,12 @@ class RobotAction(object):
         msg = Twist()
         msg.angular.z = -1.0 *np.pi / 8.0 #turn until color appears in camera
         while not found:
-            pred = self.pipeline.recognize([self.current_img])[0]
+            pred = self.pipeline.recognize([self.current_img])[0] #get object predictions
             for (label,bb) in pred:
                 print(label,bb)
-                if label in dig_map[block]:
+                if label in dig_map[block]: #digit dectected 
                     found = True
-            if not found:
+            if not found: #if not found, turn robot to get new view
                 r = rospy.Rate(2)
                 for _ in range(4):
                     self.vel_pub.publish(msg)
@@ -234,17 +236,17 @@ class RobotAction(object):
                             max_area = area
                             correct_box_idx = i
                 bbox = pred[correct_box_idx][1]
-                cx = np.mean(bbox[:,0])
+                cx = np.mean(bbox[:,0]) #this will get center of bounding box
 
                 # print(bbox, pred[correct_box_idx][0],cx,correct_box_idx)
             
-                err = w/2 - cx
+                err = w/2 - cx #offset from bounding box center
                 if err < 100:
                     front_dist = self.current_scan.ranges[0]
                 
                 k_p = 1.0 / 400.0
                 k_lin = 0.5
-                msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
+                msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist)) #proportional control
                 msg.angular.z = k_p * err
                 r = rospy.Rate(2)
                 for _ in range(2):
