@@ -19,6 +19,7 @@ pipeline = keras_ocr.pipeline.Pipeline()
 class RobotAction(object):
 
     def __init__(self):
+    
         # rospy.init_node('robot_action')
 
         # Initialize publishers and subscribers
@@ -97,6 +98,7 @@ class RobotAction(object):
         # Convert the action numbers into action messages
         action_msgs = []
         for a in actions:
+            #construct action message
             msg = RobotMoveDBToBlock()
             msg.block_id = self.q_learning.actions[a]['block']
             msg.robot_db = self.q_learning.actions[a]['dumbbell']
@@ -145,9 +147,9 @@ class RobotAction(object):
             w,h = mask.shape
             mask = mask[w//3:2*w//3,h//3:2*h//3]
             # print(np.sum(mask),np.sum(self.current_img))
-            if np.sum(mask) > 0:
+            if np.sum(mask) > 0: #if this is true, then color detected
                 found = True
-                self.vel_pub.publish(Twist())
+                self.vel_pub.publish(Twist()) 
               
             else:
                 self.vel_pub.publish(msg)
@@ -171,15 +173,10 @@ class RobotAction(object):
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 # print(cx,cy)
-
-                # visualize a red circle in our debugging window to indicate
-                # the center point of the yellow pixels
-                # cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
-
             
                 err = w/2 - cx
                 if err < 100:
-                    front_dist = self.current_scan.ranges[0]
+                    front_dist = self.current_scan.ranges[0] #only adjust linear when aligned to dumbell
                 k_p = 1.0 / 100.0
                 k_lin = 1.0
                 twist.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
@@ -198,12 +195,12 @@ class RobotAction(object):
         msg = Twist()
         msg.angular.z = -1.0 *np.pi / 8.0 #turn until color appears in camera
         while not found:
-            pred = self.pipeline.recognize([self.current_img])[0]
+            pred = self.pipeline.recognize([self.current_img])[0] #get object predictions
             for (label,bb) in pred:
                 print(label,bb)
-                if label in dig_map[block]:
+                if label in dig_map[block]: #digit dectected 
                     found = True
-            if not found:
+            if not found: #if not found, turn robot to get new view
                 r = rospy.Rate(2)
                 for _ in range(4):
                     self.vel_pub.publish(msg)
@@ -232,17 +229,17 @@ class RobotAction(object):
                             max_area = area
                             correct_box_idx = i
                 bbox = pred[correct_box_idx][1]
-                cx = np.mean(bbox[:,0])
+                cx = np.mean(bbox[:,0]) #this will get center of bounding box
 
                 # print(bbox, pred[correct_box_idx][0],cx,correct_box_idx)
             
-                err = w/2 - cx
+                err = w/2 - cx #offset from bounding box center
                 if err < 100:
                     front_dist = self.current_scan.ranges[0]
                 
                 k_p = 1.0 / 400.0
                 k_lin = 0.5
-                msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
+                msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist)) #proportional control
                 msg.angular.z = k_p * err
                 r = rospy.Rate(2)
                 for _ in range(2):
