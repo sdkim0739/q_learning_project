@@ -106,7 +106,7 @@ class RobotAction(object):
         
         # Publish and queue up the actions
         while len(action_msgs) > 0:
-            msg = action_msgs.pop()
+            msg = action_msgs.pop(0)
             self.action_pub.publish(msg)
 
     # Callback function for when an action is received
