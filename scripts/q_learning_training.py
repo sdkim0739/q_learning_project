@@ -68,7 +68,7 @@ class QLearningTraining(object):
             return s_a_from_origin
 
 
-    # TESTING: "Moves" the phantom robot to move dumbbells to blocks
+    # Publishes actions in order to train the (phantom) robot
     def move_DB(self, action):
         self.test_movement = RobotMoveDBToBlock()
 
@@ -121,6 +121,7 @@ class QLearningTraining(object):
             self.move_DB(self.current_action)
         else:
             print(self.q_matrix_arr)
+            self.q_learning.save_q_matrix(self.q_matrix.q_matrix)
             return
 
     # Determines when the Q-matrix has converged

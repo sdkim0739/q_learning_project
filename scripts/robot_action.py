@@ -48,7 +48,7 @@ class RobotAction(object):
         self.move_group_gripper = moveit_commander.MoveGroupCommander("gripper")
 
         # Set initial arm position
-        self.move_group_arm.go([0.0, 0.65, 0.05, -0.79], wait=True)
+        self.move_group_arm.go([0.0, 0.9, -0.2, -0.79], wait=True)
         self.move_group_gripper.go([0.009, 0.009], wait=True)
         print("ready")
     
@@ -57,6 +57,14 @@ class RobotAction(object):
     
     def shutdown(self):
         self.vel_pub.publish(Twist())
+
+    def extract_action(self, q_matrix):
+        # Extract 3 actions from the Q-matrix
+
+        # Publish next action if there are actions left to execute
+
+        return
+
 
     def action_received(self,data):
         print("action received")
@@ -189,17 +197,19 @@ class RobotAction(object):
                 err = w/2 - cx
                 if err < 100:
                     front_dist = self.current_scan.ranges[0]
+                
+                k_p = 1.0 / 400.0
+                k_lin = 0.5
+                msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
+                msg.angular.z = k_p * err
+                r = rospy.Rate(2)
+                for _ in range(2):
+                    self.vel_pub.publish(msg)
+                    r.sleep()
+                self.vel_pub.publish(Twist())
             else:
-                front_dist = self.current_scan.ranges[0]
-            k_p = 1.0 / 400.0
-            k_lin = 0.5
-            msg.linear.x = k_lin * min(0.5,max(0,front_dist - stop_dist))
-            msg.angular.z = k_p * err
-            r = rospy.Rate(2)
-            for _ in range(2):
-                self.vel_pub.publish(msg)
-                r.sleep()
-            self.vel_pub.publish(Twist())         
+                break
+                     
         
     def lift_dumbbell(self):
         print("lifting dumbbell")
@@ -217,7 +227,7 @@ class RobotAction(object):
     def drop_dumbbell(self):
         print("dropping dumbbell")
         # Drop arm down
-        arm_joint_goal = [0.0, 0.65, 0.05, -0.79]
+        arm_joint_goal = [0.0, 0.9, -0.2, -0.79]
         self.move_group_arm.go(arm_joint_goal, wait=True)
         # Calling ``stop()`` ensures that there is no residual movement
         self.move_group_arm.stop()
@@ -226,6 +236,13 @@ class RobotAction(object):
         gripper_joint_goal = [0.009, 0.009]
         self.move_group_gripper.go(gripper_joint_goal, wait=True)
         self.move_group_gripper.stop()
+
+        # Move backwards away from the dumbbell so robot can rotate
+        msg = Twist()
+        msg.linear.x = -1
+        self.vel_pub.publish(msg)
+        rospy.sleep(1)
+        self.vel_pub.publish(Twist())
 
     def scan_received(self,data):
         self.current_scan = data

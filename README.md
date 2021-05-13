@@ -82,22 +82,22 @@ Through keeping track of the last `n` meaningful changes in Q-value during train
 ### Selecting / executing actions:
 From the current state, we selected a random valid action. Invalidity was defined by the action being equivalent to -1 in the action matrix. Our function `get_random_action` filters for the possible valid actions from the current state, and then selects one at random. If all blocks are occupied by a dumbbell at the current state, the current state resets to 0 (the origin state) and executes a random valid action from there.
 
-**Code location**:
+**Code location**: `get_random_action()` in `q_learning_training.py`
 
 ### Updating the Q-matrix: 
-We update the Q-matrix in the callback function to the `/q_learning/reward` subscriber, `update_q_matrix()`. This function mainly makes use of the Q-Learning algorithm from class to calculate the new Q-value for the current state and action being performed. The change in Q-value is additionally appended to `q_history`, an array that keeps track of the last `n` meaningful changes. If the Q-matrix has not yet converged, we move to the new state and repeat the algorithm.
+We update the Q-matrix in the callback function to the `/q_learning/reward` subscriber, `update_q_matrix()`. This function mainly makes use of the Q-Learning algorithm from class to calculate the new Q-value for the current state and action being performed. The change in Q-value is additionally appended to `q_history`, an array that keeps track of the last `n` meaningful changes. If the Q-matrix has not yet converged, we move to the new state and repeat the algorithm. The Q-matrix is stored as a `numpy` array during training, but it is converted into a `QMatrix()` message upon publishing. Once the algorithm converges, the Q-matrix is saved in a `.txt` file.
 
-**Code location**: **TODO: Steph**
+**Code location**: `update_q_matrix(), convert_send_qmatrix_msg()` in `q_learning_training.py`, `save_q_matrix` in `q_learning.py`
 
 ### Determining convergence of the Q-Learning algorithm:
 Our standard for convergence was that the last 100 Q-value changes (in `q_history`) would all have to be less than `max_diff`, 0.01, and that there must be at least 10000 iterations. The numbers were chosen mainly through guess-and-check; initially, our numbers for the last `n` changes and the iterations were too small, which caused convergence far too early. `max_diff` was also decreased incrementally until we reached a satisfactory number in testing.
 
-**Code location**: **TODO: Steph**
+**Code location**: `has_converged()` in `q_learning_training.py`
 
 ### Executing the path of maximum reward:
 **TODO: Steph or anyone**
 
-**Code location**: **TODO: Steph or anyone**
+**Code location**: `extract_action()` in `robot_action.py`, `read_q_matrix()` in `q_learning.py`
 
 
 ## Robot perception
@@ -123,7 +123,7 @@ Once the correct dumbell is idenfitied, the robot uses proportional control to d
 ### Picking up the dumbbell:
 When the world is initialized, the robot arm should already be in a position where the gripper is aligned with the dumbbell handle. To lift the dumbbell, the robot need only close the gripper around the handle, and then it adjusts a couple of its joints to raise the arm above the ground.
 
-**Code location**: **TODO: Steph**
+**Code location**: `lift_dumbbell()` in `robot_action.py`
 
 ### Moving to the desired block:
 Once the desired block number is identified, the robot moves to the front using proportional control. The amount angular error is computed using the center of the bounding box returned by the detector. Often, the robot's camera will be in view of adjacent faces of the same block. This will return multiple bounding boxes for the same digit. To make sure the robot is moving to the front of the block, and not the side, we use the bounding box with higher area. 
@@ -133,7 +133,7 @@ Once the desired block number is identified, the robot moves to the front using 
 ### Putting down the dumbbell:
 To place the dumbbell back down, the robot arm joints move back to their starting position at world initialization. Since the robot arm is gripping the dumbbell throughout this process, the dumbbell should be touching the ground when it is back in the initial position. The robot then opens the gripper to let go of the dumbbell.
 
-**Code location**: **TODO: Steph**
+**Code location**: `drop_dumbbell()` in `robot_action.py`
 
 
 ## Challenges
