@@ -55,8 +55,15 @@ class QLearning(object):
 
         return
 
-    def read_q_matrix(self, q_matrix):
-        return
+    def read_q_matrix(self):
+
+        q_matrix_arr = []
+
+        with open('q_matrix.txt','r') as f:
+            for line in f.readlines():
+                q_matrix_arr.append([float(x) for x in line[1:-2].split(', ')])
+
+        return q_matrix_arr
 
 if __name__ == "__main__":
     node = QLearning()

@@ -18,7 +18,7 @@ class QLearningTraining(object):
 
         # Subscribe to environment to receive reward updates
         self.reward = rospy.Subscriber("/q_learning/reward", QLearningReward, self.update_q_matrix)
-        rospy.sleep(1)
+        rospy.sleep(2)
 
         # Initialize Q-matrix
         self.q_matrix = QMatrix()
@@ -137,6 +137,7 @@ class QLearningTraining(object):
         return len(self.q_history) > 10000 and max(self.q_history[-100:]) < max_diff
     
     def convert_send_qmatrix_msg(self): # Converts numpy array to QMatrix msg
+        self.q_matrix = QMatrix()
         for i in range(len(self.q_matrix_arr)):
             row = list(self.q_matrix_arr[i])
             self.q_matrix.q_matrix.append(row)
