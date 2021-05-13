@@ -21,7 +21,7 @@ class QLearningTraining(object):
         rospy.sleep(2)
 
         # Initialize Q-matrix
-        self.q_matrix = QMatrix()
+        self.q_matrix_msg = QMatrix()
 
         # For ease of use in training, we'll store the Q-matrix in a numpy array
         self.q_matrix_arr = np.zeros((64,9))
@@ -59,12 +59,10 @@ class QLearningTraining(object):
         # Select a random action among the valid actions
         if len(valid_actions) > 0:
             (new_state, action) = random.choice(valid_actions)
-            print("Valid action {1} exists to state {0}".format(new_state, action))
             return (new_state, action)
         else: # Otherwise, reset to the initial state
             self.current_state = 0
             s_a_from_origin = self.get_random_action(0)
-            print("No valid actions exist. Taking action {} from state 0".format(s_a_from_origin[1]))
             return s_a_from_origin
 
 
@@ -81,12 +79,10 @@ class QLearningTraining(object):
 
         # Publish the action to the phantom bot
         self.action_pub.publish(self.test_movement)
-        print(self.test_movement)
 
     def update_q_matrix(self, data):
         # data.reward receives the reward
-        print("Reward: {}".format(data.reward))
-        print("Iteration: {}".format(data.iteration_num))
+
         # Discount factor
         gamma = 0.9
 
@@ -96,11 +92,9 @@ class QLearningTraining(object):
 
         # Append the change in Q-value to q_history to see whether Q-value changes are plateauing
         self.q_history.append(Q_s_a - old_q_value)
-        print("Q-value diff: {}".format(Q_s_a - old_q_value))
         
         # Update the Q-matrix in the current spot with the new Q-value
         self.q_matrix_arr[self.current_state, self.current_action] = Q_s_a
-        print("Q-matrix entry: {}".format(self.q_matrix_arr[self.current_state, self.current_action]))
         
         # We need to convert the numpy Q-matrix used for testing back into a QMatrix() message type
         self.convert_send_qmatrix_msg()
@@ -119,9 +113,6 @@ class QLearningTraining(object):
 
             # Perform the next action
             self.move_DB(self.current_action)
-        else:
-            print(self.q_matrix_arr)
-            self.q_learning.save_q_matrix(self.q_matrix.q_matrix)
             return
 
     # Determines when the Q-matrix has converged
@@ -134,16 +125,21 @@ class QLearningTraining(object):
         # 1) the last 100 q-value differences are below the plateau threshold
         # 2) we have iterated at least 10000 times 
         # TODO: debugging
-        return len(self.q_history) > 10000 and max(self.q_history[-100:]) < max_diff
+        if len(self.q_history) > 10000 and max(self.q_history[-100:]) < max_diff:
+            self.q_learning.save_q_matrix(self.q_matrix_arr)
+            print("Converged! You may Ctrl+C")
+            return True
+        return False
     
     def convert_send_qmatrix_msg(self): # Converts numpy array to QMatrix msg
-        self.q_matrix = QMatrix()
+        self.q_matrix_msg = QMatrix()
         for i in range(len(self.q_matrix_arr)):
-            row = list(self.q_matrix_arr[i])
-            self.q_matrix.q_matrix.append(row)
+            row = QMatrixRow()
+            row.q_matrix_row = self.q_matrix_arr[i].astype(int)
+            self.q_matrix_msg.q_matrix.append(row)
 
         # Publish Q-matrix message to Q-matrix topic
-        self.q_matrix_pub.publish(self.q_matrix)
+        self.q_matrix_pub.publish(self.q_matrix_msg)
 
     # Runs until shutdown
     def run(self):

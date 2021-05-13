@@ -77,6 +77,10 @@ Our main objective was to use reinforcement learning to train the Turtlebot to d
 ## High-level description
 Through keeping track of the last `n` meaningful changes in Q-value during training, we outputted a Q-Matrix whose actions at select states maximize reward, subsequently becoming the goal of the robot's perception and movement.
 
+## Demonstration GIF
+![GIF of Turtlebot picking up dumbbells and placing them in front of numbered blocks]()
+*Note: in this GIF, the robot prematurely drops the red dumbbell, but it still executes the movement to "drop" it in front of the correct block.*
+
 ## Q-Learning algorithm
 
 ### Selecting / executing actions:

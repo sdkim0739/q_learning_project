@@ -49,19 +49,26 @@ class QLearning(object):
     def save_q_matrix(self, q_matrix):
         # TODO: You'll want to save your q_matrix to a file once it is done to
         # avoid retraining
-        with open("q_matrix.txt", 'w') as output:
+
+        # Write the Q-matrix to a .txt
+        with open(os.path.dirname(__file__) + '/q_matrix.txt', 'w+') as output:
             for q_matrix_row in q_matrix:
-                output.write(str(q_matrix_row) + '\n')
+                output.write(str(list(q_matrix_row)).strip('[]') + '\n')
 
         return
 
+    # Read the Q-matrix from a .txt
     def read_q_matrix(self):
-
+        # Save the Q-matrix as a 2D float array
         q_matrix_arr = []
 
-        with open('q_matrix.txt','r') as f:
+        # Read in the .txt file
+        with open(os.path.dirname(__file__) + '/q_matrix.txt','r') as f:
             for line in f.readlines():
-                q_matrix_arr.append([float(x) for x in line[1:-2].split(', ')])
+                # The line below is messy...but it converts all those string arrays in the .txt
+                # to float arrays
+                # (Yes, we could've just used JSON...we were devoted to .txt though)
+                q_matrix_arr.append([float(x) for x in line[0:-1].split(', ')])
 
         return q_matrix_arr
 

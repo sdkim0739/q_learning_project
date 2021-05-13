@@ -16,8 +16,8 @@ class ActionTest():
     def test(self):
         print('testing...')
         msg = RobotMoveDBToBlock()
-        msg.robot_db = 'blue'
-        msg.block_id = 2
+        msg.robot_db = 'green'
+        msg.block_id = 1
         self.action_pub.publish(msg)
 
 if __name__ == '__main__':
